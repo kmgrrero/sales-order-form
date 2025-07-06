@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Order Form</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  @page {
+    size: landscape;
+    margin: 2mm;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    padding: 15px;
+    background: #f9f9f9;
+    line-height: 1.5;
+    font-size: 13px;
+  }
+  h2 {
+    text-align: center;
+    margin: 5px 0;
+  }
+  h2:first-child {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  h2:nth-child(2) {
+    font-size: 20px;
+    font-weight: normal;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    padding: 6px 10px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    resize: none;
+  }
+  textarea.desc-textarea {
+    overflow: hidden;
+    min-height: 30px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+  }
+  .form-row label {
+    flex: 1;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid #444;
+    padding: 8px 12px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 10.5px;
+  }
+  th {
+    background-color: #ffeb3b;
+  }
+  th:nth-child(1), td:nth-child(1) { width: 5%; }
+  th:nth-child(2), td:nth-child(2) { width: 10%; }
+  th:nth-child(3), td:nth-child(3) { width: 18%; text-align: left; }
+  th:nth-child(4), td:nth-child(4) { width: 12%; }
+  th:nth-child(5), td:nth-child(5) { width: 7%; }
+  th:nth-child(6), td:nth-child(6) { width: 10%; }
+  th:nth-child(7), td:nth-child(7) { width: 9%; }
+  th:nth-child(8), td:nth-child(8) { width: 10%; }
+  th:nth-child(9), td:nth-child(9) { width: 13%; }
+  th:nth-child(10), td:nth-child(10) { width: 10%; }
+  th:nth-child(11), td:nth-child(11) { width: 5%; }
+  .totals td {
+    background: #fffaa8;
+    font-weight: bold;
+  }
+  .btn {
+    margin-top: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .btn.remove { background: #f44336; }
+  .btn.export { background: #2196f3; }
+  .btn.pdf { background: #9c27b0; }
+  .color-picker {
+    margin-left: 10px;
+  }
+  .signature-block {
+    margin-top: 60px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .signature-item {
+    width: 32%;
+    text-align: center;
+  }
+  .signature-item .line {
+    margin: 0 auto 4px;
+    border-bottom: 1px solid #000;
+    height: 30px;
+  }
+  .signature-item select.account-manager-name {
+    font-weight: bold;
+    text-align: center;
+    border: none;
+    border-bottom: 1px solid #000;
+    background: transparent;
+    font-size: 14px;
+  }
+  .signature-item .account-manager-label {
+    font-size: 13px;
+  }
+  .signature-item .sales-manager-name {
+    font-size: 14px;
+  }
+  .signature-item .sales-manager-label {
+    font-size: 13px;
+  }
+  .signature-item .approval-name {
+    font-size: 14px;
+  }
+  @media print {
+    body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .btn, .btn.remove, .btn.export, .btn.pdf, .color-picker {
+      display: none;
+    }
+    th:last-child, td:last-child {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="sof-content">
+  <h2 style="color: #800000;">SECUR LINKS NETWORK AND TECHNOLOGIES, INC</h2>
+  <h2>Sales Order Form</h2>
+
+  <div class="form-row">
+    <label>ACCOUNT NAME: <input type="text"></label>
+    <label>PROJECT NAME: <input type="text"></label>
+  </div>
+  <div class="form-row">
+    <label>SOF #: <input type="text"></label>
+    <label>DATE: <input type="date"></label>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ITEM</th>
+        <th>PART NUMBER</th>
+        <th>DESCRIPTION</th>
+        <th>PRICE</th>
+        <th>QTY</th>
+        <th>TOTAL AMOUNT</th>
+        <th>MARGIN %</th>
+        <th>SUB-TOTAL</th>
+        <th>SUPERVISOR OVERRIDE</th>
+        <th>TOTAL AMOUNT</th>
+        <th>ACTION</th>
+      </tr>
+    </thead>
+    <tbody id="product-body"></tbody>
+    <tfoot>
+      <tr class="totals">
+        <td colspan="9" style="text-align: right;">TOTAL EX-VAT</td>
+        <td id="totalExVat">0.00</td>
+        <td></td>
+      </tr>
+      <tr class="totals">
+        <td colspan="9" style="text-align: right;">VAT 12%</td>
+        <td id="vat">0.00</td>
+        <td></td>
+      </tr>
+      <tr class="totals">
+        <td colspan="9" style="text-align: right;">GRAND TOTAL</td>
+        <td id="grandTotal">0.00</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="signature-block">
+    <div class="signature-item">
+      <div class="line">
+        <select class="account-manager-name">
+          <option>Kim Guerrero</option>
+          <option>Jedarms Arguelles</option>
+          <option>Angelica Montemayor</option>
+          <option>Edmarie Martires</option>
+          <option>Rhaniel Manalo</option>
+          <option>Marvin Colesio</option>
+          <option>Daniela Lebuna</option>
+          <option>Kristel Joy Cabugayan</option>
+          <option>April Jane Mojica</option>
+	  <option>Jeremey Senen Chua</option>	
+        </select>
+      </div>
+      <div class="account-manager-label">Account Manager</div>
+    </div>
+    <div class="signature-item">
+      <div class="line sales-manager-name">Evangeline Rodriguez</div>
+      <div class="sales-manager-label"><em>Sales Manager</em></div>
+    </div>
+    <div class="signature-item">
+      <div class="line approval-name">JONATHAN L. CHUA / Date</div>
+    </div>
+  </div>
+</div>
+
+<button class="btn" onclick="addRow()">➕ Add Item</button>
+<button class="btn pdf" onclick="downloadPDF()">⬇️ Download PDF</button>
+<label class="btn">
+  🎨 Color
+  <input class="color-picker" type="color" onchange="changeColor(this.value)">
+</label>
+<button class="btn export" onclick="newSOF()">🆕 New SOF</button>
+<button class="btn export" onclick="saveSOF()">💾 Save SOF</button>
+<button class="btn export" onclick="showSavedSOFs()">📂 Load Saved SOF</button>
+<div id="savedSOFsList" style="margin-top:10px;"></div>
+
+<script>
+let rowCount = 0;
+function autoResize(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+}
+function addRow() {
+  rowCount++;
+  const tbody = document.getElementById("product-body");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${rowCount}</td>
+    <td><textarea class="desc-textarea" rows="1" oninput="autoResize(this)"></textarea></td>
+    <td><textarea class="desc-textarea" rows="1" oninput="autoResize(this)"></textarea></td>
+    <td><input type="number" step="0.01" class="price" /></td>
+    <td><input type="number" class="qty" /></td>
+    <td class="totalAmount">0.00</td>
+    <td><input type="number" class="margin" min="0" max="99" /></td>
+    <td class="subTotal">0.00</td>
+    <td class="override">0.00</td>
+    <td class="finalTotal">0.00</td>
+    <td><button class="btn remove" onclick="removeRow(this)">🗑️</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelectorAll('input, textarea').forEach(input => {
+    input.addEventListener('input', calculateTotals);
+  });
+}
+function removeRow(button) {
+  button.closest('tr').remove();
+  updateRowNumbers();
+  calculateTotals();
+}
+function updateRowNumbers() {
+  const rows = document.querySelectorAll('#product-body tr');
+  rows.forEach((row, index) => {
+    row.children[0].textContent = index + 1;
+  });
+  rowCount = rows.length;
+}
+function calculateTotals() {
+  const rows = document.querySelectorAll("#product-body tr");
+  let totalExVat = 0;
+  rows.forEach(row => {
+    const price = parseFloat(row.querySelector(".price")?.value || 0);
+    const qty = parseFloat(row.querySelector(".qty")?.value || 0);
+    const margin = parseFloat(row.querySelector(".margin")?.value || 0);
+    const totalAmount = price * qty;
+    const marginFactor = margin >= 0 && margin < 100 ? 1 - (margin / 100) : 1;
+    const subTotal = marginFactor > 0 ? totalAmount / marginFactor : 0;
+    const override = subTotal * 0.002;
+    const finalTotal = subTotal + override;
+    row.querySelector(".totalAmount").textContent = totalAmount.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    row.querySelector(".subTotal").textContent = subTotal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    row.querySelector(".override").textContent = override.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    row.querySelector(".finalTotal").textContent = finalTotal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    totalExVat += finalTotal;
+  });
+  const vat = totalExVat * 0.12;
+  const grandTotal = totalExVat + vat;
+  document.getElementById("totalExVat").textContent = totalExVat.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById("vat").textContent = vat.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById("grandTotal").textContent = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function downloadPDF() {
+  window.print();
+}
+function changeColor(color) {
+  document.querySelectorAll("th").forEach(th => th.style.backgroundColor = color);
+  document.querySelectorAll(".totals td").forEach(td => td.style.backgroundColor = color);
+}
+window.onload = () => addRow();
+
+function newSOF() {
+  if (confirm("Clear the form to create a new SOF?")) {
+    document.querySelectorAll('input[type="text"]').forEach(input => input.value = "");
+    document.querySelector('input[type="date"]').value = "";
+    document.querySelector('.account-manager-name').selectedIndex = 0;
+    document.getElementById("product-body").innerHTML = "";
+    rowCount = 0;
+    addRow();
+    calculateTotals();
+  }
+}
+
+function getSOFHeader() {
+  return {
+    accountName: document.querySelector('label input[type="text"]').value,
+    projectName: document.querySelectorAll('label input[type="text"]')[1].value,
+    sofNumber: document.querySelectorAll('label input[type="text"]')[2].value,
+    date: document.querySelector('label input[type="date"]').value,
+    accountManager: document.querySelector('.account-manager-name').value
+  };
+}
+
+function setSOFHeader(data) {
+  document.querySelector('label input[type="text"]').value = data.accountName || "";
+  document.querySelectorAll('label input[type="text"]')[1].value = data.projectName || "";
+  document.querySelectorAll('label input[type="text"]')[2].value = data.sofNumber || "";
+  document.querySelector('input[type="date"]').value = data.date || "";
+  document.querySelector('.account-manager-name').value = data.accountManager || "";
+}
+
+function saveSOF() {
+  let filename = prompt("Enter a name for this SOF (e.g., SOF_ProjectX):");
+  if (!filename) {
+    alert("Save cancelled.");
+    return;
+  }
+  const header = getSOFHeader();
+  const rows = [];
+  document.querySelectorAll("#product-body tr").forEach(tr => {
+    rows.push({
+      partNumber: tr.children[1].querySelector('textarea').value,
+      description: tr.children[2].querySelector('textarea').value,
+      price: tr.children[3].querySelector('input').value,
+      qty: tr.children[4].querySelector('input').value,
+      margin: tr.children[6].querySelector('input').value
+    });
+  });
+  const sofData = {
+    header,
+    rows,
+    timestamp: Date.now(),
+    filename
+  };
+  let saved = JSON.parse(localStorage.getItem("savedSOFs") || "[]");
+  saved.push(sofData);
+  localStorage.setItem("savedSOFs", JSON.stringify(saved));
+  alert("SOF saved successfully!");
+  showSavedSOFs();
+}
+
+function showSavedSOFs() {
+  const container = document.getElementById("savedSOFsList");
+  container.innerHTML = "";
+  let saved = JSON.parse(localStorage.getItem("savedSOFs") || "[]");
+  if (saved.length === 0) {
+    container.innerHTML = "<em>No saved SOFs found.</em>";
+    return;
+  }
+  saved.forEach((sof, index) => {
+    const div = document.createElement("div");
+    const date = new Date(sof.timestamp).toLocaleString();
+    div.innerHTML = `
+      <button class="btn" onclick="loadSOF(${index})">Load: ${sof.filename}</button>
+      <button class="btn remove" onclick="deleteSOF(${index})">Delete</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function loadSOF(index) {
+  let saved = JSON.parse(localStorage.getItem("savedSOFs") || "[]");
+  const sof = saved[index];
+  if (!sof) return;
+  setSOFHeader(sof.header);
+  document.getElementById("product-body").innerHTML = "";
+  rowCount = 0;
+  sof.rows.forEach(row => {
+    addRow();
+    const tr = document.querySelectorAll("#product-body tr")[rowCount - 1];
+    tr.children[1].querySelector('textarea').value = row.partNumber;
+    tr.children[2].querySelector('textarea').value = row.description;
+    tr.children[3].querySelector('input').value = row.price;
+    tr.children[4].querySelector('input').value = row.qty;
+    tr.children[6].querySelector('input').value = row.margin;
+  });
+  calculateTotals();
+  alert("SOF loaded.");
+}
+
+function deleteSOF(index) {
+  if (!confirm("Delete this saved SOF?")) return;
+  let saved = JSON.parse(localStorage.getItem("savedSOFs") || "[]");
+  saved.splice(index, 1);
+  localStorage.setItem("savedSOFs", JSON.stringify(saved));
+  showSavedSOFs();
+}
+
+</script>
+</body>
+</html>
